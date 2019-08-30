@@ -9,4 +9,4 @@ To build this project: Use make
   $ make
 
 To run it:
-  ￥ ./objtoh <source>.obj [<target>.h]
+  $ ./objtoh <<source>>.obj [<<target>>.h]
