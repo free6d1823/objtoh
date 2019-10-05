@@ -35,6 +35,9 @@ printf("main: step1\n");
         perror("Fata error!! Check obj file.\n");
         exit(-1);
     }
+for(int i=0; i< vertices.size(); i++){
+printf("v[%d] = %f,%f,%f\n", i, vertices[i].x, vertices[i].y, vertices[i].x);
+}
 printf("main: step2\n");
     vector<unsigned short> indexed_indices;
     vector<seFloat3D> indexed_vertices;

@@ -21,7 +21,7 @@ static int lineno = 0;
     end = strchr(start,del);                         \
     if(end!=NULL || end != start) {                   \
         memcpy(temp, start, end-start);             \
-        temp[end+1-start] = 0;                      \
+        temp[end-start] = 0;                      \
         *value = atoi(temp);                         \
         start = end+1;                              \
     } else { mask |= no_flag;                       \
@@ -34,13 +34,30 @@ int parserFacelet(char* line,
 {
     int mask = PARSER_OK; 
     char* p1;
+
     p1 = strtok(line, " ");
     if (!p1)
         return PARSER_ERROR;
     //p1 = v/u/n
     PARSER_PARAM(pv0, p1, '/', NO_VERTEX);
+    /* {  \
+    char* end; char temp[1024];                      \
+    end = strchr(p1,'/');                         \
+    if(end!=NULL || end != p1) {                   \
+printf("p1=%s, end=%s end-p1=%d", p1, end, end-p1);
+        memcpy(temp, p1, end-p1);             \
+        temp[end-p1] = 0;                      \
+printf("temp =%s", temp);
+        *pv0 = atoi(temp);                         \
+printf(" pv0=%d\n", *pv0);
+        p1 = end+1;                              \
+    } else { mask |= NO_VERTEX;                       \
+    }}                                              \
+    */
+
     PARSER_PARAM(pu0, p1, '/', NO_TEXTURE);
     PARSER_PARAM(pn0, p1, 0x00, NO_NORMAL);
+ 
     p1 = strtok(NULL, " ");
     if (!p1)
         return PARSER_ERROR;
@@ -54,7 +71,7 @@ int parserFacelet(char* line,
     PARSER_PARAM(pu2, p1, '/', NO_TEXTURE);
     PARSER_PARAM(pn2, p1, 0, NO_NORMAL);
     
-
+ 
     return mask;
 } 
 bool parserThreeElements(char* line, float* x, float* y, float* z )
@@ -178,7 +195,6 @@ bool loadOBJ(
     }
     printf ("-- vrt = %d, text = %d, normal = %d, facelet=%d\n", vv,tt,nn,ff);
     // For each vertex of each triangle
-printf("objloader: step 2a: v=%d\n", vertexIndices.size());
     for( unsigned int i=0; i<vertexIndices.size(); i++ ){
 
         // Get the indices of its attributes
@@ -188,10 +204,9 @@ printf("objloader: step 2a: v=%d\n", vertexIndices.size());
             // Put the attributes in buffers
             out_vertices.push_back(vertex);
         } else {
-            fprintf(stderr, "vertex index %d out of vertex tables size %d \n", vertexIndex,temp_vertices.size());         
+            fprintf(stderr, "vertex index %d out of vertex tables size %d \n", vertexIndex, (int)temp_vertices.size());         
         }
     }
-printf("objloader: step 2b: u=%d\n", uvIndices.size());
 
     for( unsigned int i=0; i<uvIndices.size(); i++ ){
         unsigned int uvIndex = uvIndices[i];
@@ -200,11 +215,10 @@ printf("objloader: step 2b: u=%d\n", uvIndices.size());
             seFloat2D uv = temp_uvs[ uvIndex-1 ];
             out_uvs     .push_back(uv);
         }else {
-            fprintf(stderr, "texture index %d out of uv tables size %d \n", uvIndex,temp_uvs.size());                             
+            fprintf(stderr, "texture index %d out of uv tables size %d \n", uvIndex, (int)temp_uvs.size());                             
         }
     }
 
-printf("objloader: step 2c: n=%d\n", normalIndices.size());
     for( unsigned int i=0; i<normalIndices.size(); i++ ){
         unsigned int normalIndex = normalIndices[i];
             if (normalIndex<= temp_normals.size()) {
@@ -212,79 +226,13 @@ printf("objloader: step 2c: n=%d\n", normalIndices.size());
             seFloat3D normal = temp_normals[ normalIndex-1 ];
             out_normals .push_back(normal);
         }else {
-            fprintf(stderr, "norm index %d out of norm table %d \n", normalIndex,temp_normals.size());                             
+            fprintf(stderr, "norm index %d out of norm table %d \n", normalIndex, (int)temp_normals.size());                             
         }
     }
     fclose(file);
     return true;
 }
-//////////////////////////////////////////////////////////////////////
 
-// Returns true iif v1 can be considered equal to v2
-#if 0
-bool is_near(float v1, float v2){
-    return ( ( v1-v2 ) < 0.0001f && (v1-v2) > -0.0001f);
-}
-
-// Searches through all already-exported vertices
-// for a similar one.
-// Similar = same position + same UVs + same normal
-bool getSimilarVertexIndex(
-    seFloat3D & in_vertex,
-    seFloat2D & in_uv,
-    seFloat3D & in_normal,
-    std::vector<seFloat3D> & out_vertices,
-    std::vector<seFloat2D> & out_uvs,
-    std::vector<seFloat3D> & out_normals,
-    unsigned int & result
-){
-    // Lame linear search
-    for ( unsigned int i=0; i<out_vertices.size(); i++ ){
-        if (
-            is_near( in_vertex.x , out_vertices[i].x ) &&
-            is_near( in_vertex.y , out_vertices[i].y ) &&
-            is_near( in_vertex.z , out_vertices[i].z ) &&
-            is_near( in_uv.x     , out_uvs     [i].x ) &&
-            is_near( in_uv.y     , out_uvs     [i].y ) &&
-            is_near( in_normal.x , out_normals [i].x ) &&
-            is_near( in_normal.y , out_normals [i].y ) &&
-            is_near( in_normal.z , out_normals [i].z )
-        ){
-            result = i;
-            return true;
-        }
-    }
-    // No other vertex could be used instead.
-    // Looks like we'll have to add it to the VBO.
-    return false;
-}
-
-bool getSimilarVertexIndex_noUv(
-    seFloat3D & in_vertex,
-    seFloat3D & in_normal,
-    std::vector<seFloat3D> & out_vertices,
-    std::vector<seFloat3D> & out_normals,
-    unsigned int & result
-){
-    // Lame linear search
-    for ( unsigned int i=0; i<out_vertices.size(); i++ ){
-        if (
-            is_near( in_vertex.x , out_vertices[i].x ) &&
-            is_near( in_vertex.y , out_vertices[i].y ) &&
-            is_near( in_vertex.z , out_vertices[i].z ) &&
-             is_near( in_normal.x , out_normals [i].x ) &&
-            is_near( in_normal.y , out_normals [i].y ) &&
-            is_near( in_normal.z , out_normals [i].z )
-        ){
-            result = i;
-            return true;
-        }
-    }
-    // No other vertex could be used instead.
-    // Looks like we'll have to add it to the VBO.
-    return false;
-}
-#endif 
 struct PackedVertex{
     seFloat3D position;
     seFloat2D uv;
@@ -342,7 +290,9 @@ void indexVBO_noUv(
     PackedVertex2 packed2;
     // For each input vertex
     for ( unsigned int i=0; i<in_vertices.size(); i++ ){
-            packed2 = {in_vertices[i], in_normals[i]} ;
+        //    packed2 = {in_vertices[i], in_normals[i]} ;
+        packed2.position = in_vertices[i];
+        packed2.normal = in_normals[i];
 
         // Try to find a similar vertex in out_XXXX
         unsigned short index;
@@ -376,7 +326,9 @@ void indexVBO(
     // For each input vertex
     for ( unsigned int i=0; i<in_vertices.size(); i++ ){
 
-            packed = {in_vertices[i], in_uvs[i], in_normals[i]};
+        packed.position = in_vertices[i];
+        packed.uv = in_uvs[i];
+        packed.normal = in_normals[i];
 
 
         // Try to find a similar vertex in out_XXXX
